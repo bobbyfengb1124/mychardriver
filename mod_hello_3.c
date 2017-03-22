@@ -39,12 +39,35 @@ int onebyte_release(struct inode *inode, struct file *filep)
 
 ssize_t onebyte_read(struct file * filep, char *buf, size_t count, loff_t *f_pos)
 {
-	/* please complete the function on your own */
+	if (*f_pos == 0) {
+		copy_to_user(buf, onebyte_data, 1);
+		*f_pos += 1;
+		return 1;
+	} else {
+		return 0;
+	}
+/*	int error_count = 0;
+	*buf = 'x';
+	printk(KERN_INFO "DevOne: Data %c \n", filep->private_data);
+	
+	error_count = copy_to_user(buf, onebyte_data, 1);
+	if (error_count==0)
+	{
+		printk(KERN_INFO "DevOne: Sent %d characters to the user\n", 1);
+		printk(KERN_INFO "DevOne: Sent %c to the user\n", *buf);
+		return 0;
+	}
+	else {
+		printk(KERN_ERR "DevOne: Failed to send %c chracters to the user\n", *onebyte_data);
+		return -EFAULT;
+	}*/
 }
 
 ssize_t onebyte_write(struct file * filep, const char *buf, size_t count, loff_t *f_pos)
 {
 	/* please complete the function on your own */
+	printk(KERN_INFO "DevOne: Data %c \n", filep->private_data);
+	printk(KERN_INFO "DevOne: Data %c \n", *buf);
 }
 
 static int onebyte_init(void)
