@@ -14,7 +14,6 @@
 #define SCULL_HELLO _IO(SCULL_IOC_MAGIC, 1)
 #define SCULL_FROM_USER _IOR(SCULL_IOC_MAGIC, 2, char *)
 #define SCULL_TO_USER _IOW(SCULL_IOC_MAGIC, 3, char *)
-#define SCULL_WR_USER _IOW(SCULL_IOC_MAGIC, 4, char *)
 #define SCULL_IOC_MAXNR 14
 
 /* forward declaration */
@@ -73,10 +72,11 @@ long onebyte_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		case SCULL_FROM_USER:
 			copy_from_user(user_msg, arg, 16);
 			retval = strlen(user_msg);
-			printk(KERN_WARNING "msg from user: %s\n", user_msg);
+			printk(KERN_WARNING "user msg: %s\n", user_msg);
 			break;
 		case SCULL_TO_USER:
 			retval = copy_to_user(arg, dev_msg, 16);
+			printk(KERN_WARNING "dev msg: %s\n", dev_msg);
 			break;
 		default: /* redundant, as cmd was checked against MAXNR */
 			return -ENOTTY;

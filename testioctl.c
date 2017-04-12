@@ -11,7 +11,6 @@ int lcd;
 #define SCULL_HELLO _IO(SCULL_IOC_MAGIC, 1)
 #define SCULL_FROM_USER _IOR(SCULL_IOC_MAGIC, 2, char *)
 #define SCULL_TO_USER _IOW(SCULL_IOC_MAGIC, 3, char *)
-#define SCULL_WR_USER _IOWR(SCULL_IOC_MAGIC, 4, char *)
 
 
 void test ()
@@ -28,12 +27,12 @@ void test ()
 	k = ioctl(lcd, SCULL_HELLO);
 	printf("result = %d\n", k);
 	
-	k = ioctl(lcd, SCULL_FROM_USER, "WRITE");
-	printf("result = written length: %d\n", k);
-	
 	char strread[16];
 	k = ioctl(lcd, SCULL_TO_USER, strread);
 	printf("result = %s\n", strread);
+	
+	k = ioctl(lcd, SCULL_FROM_USER, strread);
+	printf("result = written length: %d\n", k);
 }
 
 int main(int argc, char ** argv)
