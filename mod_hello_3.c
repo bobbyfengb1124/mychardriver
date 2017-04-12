@@ -7,8 +7,15 @@
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
+#include <linux/ioctl.h>
 
 #define MAJOR_NUMBER 61
+#define SCULL_IOC_MAGIC 'k'
+#define SCULL_HELLO _IO(SCULL_IOC_MAGIC, 1)
+#define SCULL_FROM_USER _IOR(SCULL_IOC_MAGIC, 2, char *)
+#define SCULL_TO_USER _IOW(SCULL_IOC_MAGIC, 3, char *)
+#define SCULL_WR_USER _IOW(SCULL_IOC_MAGIC, 4, char *)
+#define SCULL_IOC_MAXNR 14
 
 /* forward declaration */
 int onebyte_open(struct inode *inode, struct file *filep);
@@ -17,6 +24,7 @@ ssize_t onebyte_read(struct file * filep, char *buf, size_t count, loff_t *f_pos
 ssize_t onebyte_write(struct file * filep, const char *buf, size_t count, loff_t *f_pos);
 static void onebyte_exit(void);
 loff_t onebyte_lseek (struct file * filep, loff_t f_pos, int whence);
+long onebyte_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
 
 /* definition of file_operation structure */
 struct file_operations onebyte_fops = {
@@ -24,10 +32,58 @@ struct file_operations onebyte_fops = {
 	read:	onebyte_read,
 	write:	onebyte_write,
 	open:	onebyte_open,
+	unlocked_ioctl:  onebyte_ioctl,
 	release: onebyte_release
 };
 
 char *fourmegabyte_data = NULL;
+char dev_msg[16] = "READ";
+char user_msg[16] = "";
+
+long onebyte_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
+{
+	int err=0;
+	int retval = 0;
+
+	/*
+	* extract the type and number bitfields, and don'd
+	* decode wrong cmds: return ENOTTY(inappropriate ioctl) before access_ok()
+	*/
+
+	if (_IOC_TYPE(cmd) != SCULL_IOC_MAGIC) return -ENOTTY;
+	if (_IOC_NR(cmd) > SCULL_IOC_MAXNR) return -ENOTTY;
+
+	/*
+	* the direction is a bitmask, and VERIFY_WRITE catches R/W
+	* transfer. 'Type' is user-oriented, while
+	* access_ok is kernel-oriented, so the concept of "read" and 
+	* "write" is reversed
+	*/
+	if (_IOC_DIR(cmd) & _IOC_READ)
+		err = !access_ok(VERYFY_WRITE, (void __user*) arg, _IOC_SIZE(cmd));
+	
+	if (_IOC_DIR(cmd) & _IOC_WRITE)
+		err = !access_ok(VERYFY_WRITE, (void __user*) arg, _IOC_SIZE(cmd));
+
+	if (err) return -EFAULT;
+	switch(cmd) {
+		case SCULL_HELLO:
+			printk(KERN_WARNING "HELLO\n");
+			break;
+		case SCULL_FROM_USER:
+			copy_from_user(user_msg, arg, 16);
+			retval = strlen(user_msg);
+			printk(KERN_WARNING "msg from user: %s\n", user_msg);
+			break;
+		case SCULL_TO_USER:
+			retval = copy_to_user(arg, dev_msg, 16);
+			break;
+		default: /* redundant, as cmd was checked against MAXNR */
+			return -ENOTTY;
+	}
+
+	return retval;
+}
 
 loff_t onebyte_lseek (struct file * filep, loff_t off, int whence)
 {
@@ -40,7 +96,7 @@ loff_t onebyte_lseek (struct file * filep, loff_t off, int whence)
 			newpos = filep->f_pos + off;
 			break;
 		case 2: /* SEEK_CUR */
-			newpos = 4*1024*1024 + off;
+			newpos = strlen(fourmegabyte_data) + off;
 			break;
 
 		default: /* can't happen */
